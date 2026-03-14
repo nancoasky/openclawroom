@@ -9,6 +9,7 @@ SERVICE_NAME = openclaw-gateway
 DATA_DIR = ./data
 NPM_GLOBAL_DIR = ./.npm-global
 BASHRC_FILE = ./.bashrc
+ENV_FILE = ./.env
 COMPOSE_FILE = docker-compose.yml
 BACKUP_SUFFIX = .backup-$(shell date +%Y%m%d-%H%M%S)
 
@@ -107,6 +108,10 @@ uninstall: backup
 		mv $(BASHRC_FILE) $(BASHRC_FILE)$(BACKUP_SUFFIX); \
 		echo "$(GREEN)原bashrc已重命名为 $(BASHRC_FILE)$(BACKUP_SUFFIX)$(NC)"; \
 	fi
+	@if [ -f $(ENV_FILE) ]; then \
+		mv $(ENV_FILE) $(ENV_FILE)$(BACKUP_SUFFIX); \
+		echo "$(GREEN)原bashrc已重命名为 $(ENV_FILE)$(BACKUP_SUFFIX)$(NC)"; \
+	fi
 	
 	@echo "$(GREEN)✅ 卸载完成。容器已删除，数据已备份$(NC)"
 	@echo "如需彻底删除所有数据，请手动删除备份目录。"
@@ -159,6 +164,10 @@ backup:
 	if [ -f $(BASHRC_FILE) ]; then \
 		BACKUP_ITEMS="$$BACKUP_ITEMS $(BASHRC_FILE)"; \
 		BACKUP_DESC="$$BACKUP_DESC .bashrc"; \
+	fi; \
+	if [ -f $(ENV_FILE) ]; then \
+		BACKUP_ITEMS="$$BACKUP_ITEMS $(ENV_FILE)"; \
+		BACKUP_DESC="$$BACKUP_DESC .env"; \
 	fi; \
 	if [ -n "$$BACKUP_ITEMS" ]; then \
 		tar -czf $$BACKUP_FILE $$BACKUP_ITEMS 2>/dev/null; \
@@ -235,6 +244,9 @@ restore:
 	if [ -f $(BASHRC_FILE) ]; then \
 		mv $(BASHRC_FILE) $(BASHRC_FILE).pre-restore-$$(date +%Y%m%d-%H%M%S); \
 	fi; \
+	if [ -f $(ENV_FILE) ]; then \
+		mv $(ENV_FILE) $(ENV_FILE).pre-restore-$$(date +%Y%m%d-%H%M%S); \
+	fi; \
 	mkdir -p $(DATA_DIR); \
 	echo "$(YELLOW)▶ 解压备份文件...$(NC)"; \
 	tar -xzf "./backup/$$filename"; \
@@ -299,4 +311,7 @@ check-dir:
 	@chmod 755 $(NPM_GLOBAL_DIR)
 	@if [ ! -f $(BASHRC_FILE) ]; then \
 		touch $(BASHRC_FILE); \
+	fi
+	@if [ ! -f $(ENV_FILE) ]; then \
+		touch $(ENV_FILE); \
 	fi
