@@ -10,8 +10,37 @@ DATA_DIR = ./data
 NPM_GLOBAL_DIR = ./.npm-global
 BASHRC_FILE = ./.bashrc
 ENV_FILE = ./.env
-COMPOSE_FILE = docker-compose.yml
 BACKUP_SUFFIX = .backup-$(shell date +%Y%m%d-%H%M%S)
+
+# 检测操作系统（兼容 MSYS/Git Bash/Cygwin）
+UNAME_S := $(shell uname -s)
+
+# 设置 Compose 文件
+ifeq ($(UNAME_S),Windows_NT)
+    COMPOSE_FILE := docker-compose-win.yml
+    DETECTED_OS := Windows
+else ifeq ($(UNAME_S),Darwin)
+    COMPOSE_FILE := docker-compose.yml
+    DETECTED_OS := macOS
+else ifeq ($(UNAME_S),Linux)
+    COMPOSE_FILE := docker-compose.yml
+    DETECTED_OS := Linux
+else ifeq ($(findstring MSYS_NT,$(UNAME_S)),MSYS_NT)
+    # MSYS2/Git Bash on Windows
+    COMPOSE_FILE := docker-compose-win.yml
+    DETECTED_OS := Windows(MSYS)
+else ifeq ($(findstring MINGW,$(UNAME_S)),MINGW)
+    # MinGW on Windows
+    COMPOSE_FILE := docker-compose-win.yml
+    DETECTED_OS := Windows(MINGW)
+else ifeq ($(findstring CYGWIN,$(UNAME_S)),CYGWIN)
+    # Cygwin on Windows
+    COMPOSE_FILE := docker-compose-win.yml
+    DETECTED_OS := Windows(CYGWIN)
+else
+    COMPOSE_FILE := docker-compose.yml
+    DETECTED_OS := Unknown
+endif
 
 # 颜色输出（美化用）
 GREEN = \033[0;32m
@@ -20,10 +49,18 @@ RED = \033[0;31m
 BLUE = \033[0;34m
 NC = \033[0m # No Color
 
-.PHONY: help install uninstall start stop restart status logs backup restore \
+.PHONY: print-vars help install uninstall start stop restart status logs backup restore \
         backup-data restore-list tui shell config exec update ps clean \
         backup-info check-dir
 
+print-vars:
+	@echo "========================================="
+	@echo "System Detection Information"
+	@echo "========================================="
+	@echo "Detected OS:      $(DETECTED_OS)"
+	@echo "UNAME Result:     $(UNAME_S)"
+	@echo "COMPOSE_FILE:     $(COMPOSE_FILE)"
+	@echo "========================================="
 # 默认目标：显示帮助
 help:
 	@echo "$(GREEN)OpenClaw 管理 Makefile$(NC)"
@@ -63,14 +100,14 @@ help:
 install: check-dir
 	@echo "$(GREEN)▶ 步骤1: 检查 Docker 环境...$(NC)"
 	@command -v docker >/dev/null 2>&1 || { echo "$(RED)❌ Docker 未安装，请先安装 Docker$(NC)" >&2; exit 1; }
-	@$(DOCKER_COMPOSE) version >/dev/null 2>&1 || { echo "$(RED)❌ Docker Compose 不可用$(NC)" >&2; exit 1; }
+	@$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) version >/dev/null 2>&1 || { echo "$(RED)❌ Docker Compose 不可用$(NC)" >&2; exit 1; }
 	@echo "$(GREEN)✅ Docker 环境正常$(NC)"
 	
 	@echo "$(GREEN)▶ 步骤2: 拉取 OpenClaw 3.8 镜像...$(NC)"
-	@$(DOCKER_COMPOSE) pull
+	@$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) pull
 	
 	@echo "$(GREEN)▶ 步骤3: 启动服务...$(NC)"
-	@$(DOCKER_COMPOSE) up -d
+	@$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) up -d
 	
 	@echo "$(GREEN)▶ 步骤4: 等待服务启动...$(NC)"
 	@sleep 5
@@ -93,7 +130,7 @@ uninstall: backup
 	fi
 	
 	@echo "$(YELLOW)▶ 停止并删除容器...$(NC)"
-	@$(DOCKER_COMPOSE) down -v
+	@$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) down -v
 	
 	@echo "$(YELLOW)▶ 备份数据目录 (以防万一)...$(NC)"
 	@if [ -d $(DATA_DIR) ]; then \
@@ -121,28 +158,28 @@ uninstall: backup
 ## start: 启动服务
 start:
 	@echo "$(GREEN)▶ 启动 OpenClaw 服务...$(NC)"
-	@$(DOCKER_COMPOSE) up -d
-	@$(DOCKER_COMPOSE) ps
+	@$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) up -d
+	@$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) ps
 
 ## stop: 停止服务
 stop:
 	@echo "$(YELLOW)▶ 停止 OpenClaw 服务...$(NC)"
-	@$(DOCKER_COMPOSE) stop
+	@$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) stop
 	@echo "$(GREEN)✅ 服务已停止$(NC)"
 
 ## restart: 重启服务
 restart:
 	@echo "$(YELLOW)▶ 重启 OpenClaw 服务...$(NC)"
-	@$(DOCKER_COMPOSE) restart
-	@$(DOCKER_COMPOSE) ps
+	@$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) restart
+	@$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) ps
 
 ## status: 查看服务状态
 status:
-	@$(DOCKER_COMPOSE) ps
+	@$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) ps
 
 ## logs: 查看实时日志
 logs:
-	@$(DOCKER_COMPOSE) logs -f
+	@$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) logs -f
 
 # 🔄 数据与配置
 
@@ -261,17 +298,17 @@ restore:
 ## tui: 进入 TUI 对话模式
 tui:
 	@echo "$(GREEN)▶ 进入 TUI 对话模式 (输入 exit 退出)...$(NC)"
-	@$(DOCKER_COMPOSE) exec $(SERVICE_NAME) openclaw tui
+	@$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) exec $(SERVICE_NAME) openclaw tui
 
 ## shell: 进入容器 Shell
 shell:
 	@echo "$(GREEN)▶ 进入容器 Shell (输入 exit 退出)...$(NC)"
-	@$(DOCKER_COMPOSE) exec $(SERVICE_NAME) /bin/bash
+	@$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) exec $(SERVICE_NAME) /bin/bash
 
 ## config: 运行配置向导
 config:
 	@echo "$(GREEN)▶ 启动配置向导...$(NC)"
-	@$(DOCKER_COMPOSE) exec $(SERVICE_NAME) openclaw onboard
+	@$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) exec $(SERVICE_NAME) openclaw onboard
 
 ## exec: 执行自定义命令 (用法: make exec 'openclaw --version')
 exec:
@@ -279,21 +316,21 @@ exec:
 		echo "$(RED)❌ 请指定要执行的命令，例如: make exec 'openclaw --version'$(NC)"; \
 		exit 1; \
 	fi
-	@$(DOCKER_COMPOSE) exec $(SERVICE_NAME) $(cmd)
+	@$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) exec $(SERVICE_NAME) $(cmd)
 
 # 🧹 维护工具
 
 ## ps: 查看容器进程
 ps:
-	@$(DOCKER_COMPOSE) ps
+	@$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) ps
 
 ## update: 更新镜像 (需先手动修改 docker-compose.yml 中的版本标签)
 update:
 	@echo "$(YELLOW)▶ 拉取最新镜像...$(NC)"
-	@$(DOCKER_COMPOSE) pull
+	@$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) pull
 	@echo "$(YELLOW)▶ 重新创建容器...$(NC)"
-	@$(DOCKER_COMPOSE) up -d --force-recreate
-	@$(DOCKER_COMPOSE) ps
+	@$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) up -d --force-recreate
+	@$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) ps
 
 ## clean: 清理无用资源
 clean:
