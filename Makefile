@@ -49,9 +49,12 @@ RED = \033[0;31m
 BLUE = \033[0;34m
 NC = \033[0m # No Color
 
-.PHONY: print-vars help install uninstall start stop restart status logs backup restore \
+.PHONY: print-vars build help install uninstall start stop restart status logs backup restore \
         backup-data restore-list tui shell config exec update ps clean \
         backup-info check-dir
+
+build:
+	docker build --no-cache -t openclaw-nanco:latest .
 
 print-vars:
 	@echo "========================================="

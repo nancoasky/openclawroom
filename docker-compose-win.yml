@@ -1,8 +1,8 @@
 version: "3.8"
 services:
   openclaw-gateway:
-    # 使用指定的 2026.3.8 版本镜像
-    image: ghcr.io/openclaw/openclaw:2026.3.8
+    # 使用指定的 2026.4.8 版本镜像
+    image: openclaw-nanco:latest
     container_name: openclaw-gateway
     restart: unless-stopped
     environment:
@@ -17,9 +17,9 @@ services:
       - NODE_ENV=production         # 启用生产模式，禁用调试/日志冗余
       - UV_THREADPOOL_SIZE=16       # Node.js 线程池扩容（适配IO密集型场景）
     # 在容器启动前修复权限
-    entrypoint: ["/entrypoint.sh"]
+    #entrypoint: ["/entrypoint.sh"]
     command: ["openclaw", "gateway", "run"]
-    user: root   # 添加这一行，强制以 root 启动
+    #user: root   # 添加这一行，强制以 root 启动c
     volumes:
       # 数据持久化（保留原有配置）
       - ./data:/home/node/.openclaw
@@ -28,7 +28,7 @@ services:
       - ./config:/home/node/config:ro
       - ./.npm-global:/home/node/.npm-global
       - ./.bashrc:/home/node/.bashrc
-      - ./entrypoint.sh:/entrypoint.sh:ro   # 挂载脚本
+      #- ./entrypoint.sh:/entrypoint.sh:ro   # 挂载脚本
     ports:
       # 保留本地回环绑定，避免公网暴露（安全优先）
       - "18789:18789"
