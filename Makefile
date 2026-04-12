@@ -12,34 +12,25 @@ BASHRC_FILE = ./.bashrc
 ENV_FILE = ./.env
 BACKUP_SUFFIX = .backup-$(shell date +%Y%m%d-%H%M%S)
 
-# 检测操作系统（兼容 MSYS/Git Bash/Cygwin）
-UNAME_S := $(shell uname -s)
+# 极简跨平台 Makefile - 最稳定版本
 
-# 设置 Compose 文件
-ifeq ($(UNAME_S),Windows_NT)
+# 使用 OS 环境变量检测 Windows（最可靠）
+ifeq ($(OS),Windows_NT)
     COMPOSE_FILE := docker-compose-win.yml
     DETECTED_OS := Windows
-else ifeq ($(UNAME_S),Darwin)
-    COMPOSE_FILE := docker-compose.yml
-    DETECTED_OS := macOS
-else ifeq ($(UNAME_S),Linux)
-    COMPOSE_FILE := docker-compose.yml
-    DETECTED_OS := Linux
-else ifeq ($(findstring MSYS_NT,$(UNAME_S)),MSYS_NT)
-    # MSYS2/Git Bash on Windows
-    COMPOSE_FILE := docker-compose-win.yml
-    DETECTED_OS := Windows(MSYS)
-else ifeq ($(findstring MINGW,$(UNAME_S)),MINGW)
-    # MinGW on Windows
-    COMPOSE_FILE := docker-compose-win.yml
-    DETECTED_OS := Windows(MINGW)
-else ifeq ($(findstring CYGWIN,$(UNAME_S)),CYGWIN)
-    # Cygwin on Windows
-    COMPOSE_FILE := docker-compose-win.yml
-    DETECTED_OS := Windows(CYGWIN)
 else
-    COMPOSE_FILE := docker-compose.yml
-    DETECTED_OS := Unknown
+    # 尝试使用 uname 检测其他系统
+    UNAME_S := $(shell uname -s 2>/dev/null)
+    ifeq ($(UNAME_S),Darwin)
+        COMPOSE_FILE := docker-compose.yml
+        DETECTED_OS := macOS
+    else ifeq ($(UNAME_S),Linux)
+        COMPOSE_FILE := docker-compose.yml
+        DETECTED_OS := Linux
+    else
+        COMPOSE_FILE := docker-compose.yml
+        DETECTED_OS := Unix
+    endif
 endif
 
 # 颜色输出（美化用）
