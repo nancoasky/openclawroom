@@ -35,8 +35,8 @@ if [ "$(id -u)" = "0" ]; then
     echo "✅ Permission fix completed"
     echo "🔄 Switching to node user..."
     
-    # 先打印 ~ 目录，再执行 openclaw gateway run
-    exec su - node -c "echo '~ resolves to: ' ~ && openclaw gateway run"
+    # 使用 su 的正确方式：直接传递命令字符串
+    exec su node -c "openclaw gateway run"
 else
     echo "ℹ️  Already running as non-root, skipping permission fix"
     exec openclaw gateway run
